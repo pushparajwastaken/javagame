@@ -1,10 +1,10 @@
-Defer
+`Defer`
 -If you stop and build a little door every time you find one in the instructions, it takes longer to finish the whole house. That’s like a normal script—stopping everything to run right away.
 -But if you collect all the doors first and attach them after finishing the house, it's much faster. That’s like using defer—the script waits until the whole page is ready before running.
 
 ---
 
-UTILITY FUNCTION-
+`UTILITY FUNCTION-`
 Utility functions are small, reusable functions that perform common or repetitive tasks, making code cleaner and more modular. They don’t depend on the application’s state and usually serve a specific purpose, like formatting data, generating random numbers, or handling arrays.
 
 ---
@@ -18,20 +18,20 @@ game state defines many things whose turn is it now,are we aiming now or is the 
 
 Once we get the canvas element,we'll first fit it's size to fit the web-page and then get it's drawing context and this context will be used by the draw function.
 (
-Drawing Context-
+`Drawing Context`-
 Imagine you have a blank sheet of paper (the game screen). The drawing context is like a set of crayons and brushes that let you draw on it.
 )
 
 ---
 
-NEW GAME-
+`NEW GAME`-
 this function initializes the state
 generates level
 draws the scene
 
 ---
 
-CANVAS
+`CANVAS`
 The Draw function paints the whole canvas based on the state.
 We draw layer by layer
 First we draw the background,we fill the background with a gradient,and we add a circle that will be our sun.
@@ -44,7 +44,7 @@ then once we've painted something on the canvas we can either cover it up by pai
 
 we can draw more complicated shapes.we can define a path.
 (
-PATH
+`PATH`
 a path is a sequence of drawing commands that define shapes like lines, circles, or curves.
 When you start drawing a shape, that's a path.
 
@@ -56,18 +56,18 @@ If we don’t lift the pencil, all the shapes stay connected.
 
 -Paths start with the beginPath method and end with either calling the fill or the stroke method or both.
 (
-BEGINPATH
+`BEGINPATH`
 The beginPath() method begins a path or resets the current path.
 In coding, beginPath() is like lifting your pencil so the next drawing doesn’t connect to the old one!
 )
 (
-FILL METHOD
+`FILL METHOD`
 The fill() method fills specified elements in an array with a value.
 The fill() method overwrites the original array.
 Start and end position can be specified. If not, all elements will be filled.
 )
 (
-STROKE METHOD
+`STROKE METHOD`
 The stroke() method draws the current path.
 )
 The moveTo() method moves a window to the specified coordinates.
@@ -75,7 +75,7 @@ The moveTo() method moves a window to the specified coordinates.
 
 ---
 
-DRAW Function
+`DRAW Function`
 this function will draw everything that is on screen
 when we use canvas,we have the coordinate system origin at the top left corner of the screen and it grows to the right and downwards.This is how websites work in general.Things go from left to right and top to bottom.
 but it's more convenient in game from bottom to top
@@ -98,4 +98,22 @@ The gradient object can be used as value to strokeStyle or fillStyle propertie
 
 ---
 
-whenever we s
+`BACKGROUND BUILDINGS`
+first we calculate the starting position,when we generate metadata for a building we always get the index of the building as an argument,based on this we can look up the previous building and take its position and size.we add these togetheer and add some extra units as a gap,if there is no building we started at -30 which is just a random number
+
+`Drawbackground Buildings`
+we iterate over the array we just generated and draw a simple rectangle for each item ,we set the fill style to a simple color value
+
+---
+
+`Math.Ceil`
+The Math.ceil() static method always rounds up and returns the smallest integer greater than or equal to a given number.
+
+`Math.floor`
+The Math.floor() static method always rounds down and returns the largest integer less than or equal to a given number.
+
+---
+
+`DRAWING WINDOWS`
+first we have to check if the lights are on or off,if the lights are on,we draw the window
+but the lightson array is one dimensional and ourbuilding is a two dimensional grid,how do we map the lightson array to the building
