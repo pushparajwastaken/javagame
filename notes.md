@@ -117,3 +117,18 @@ The Math.floor() static method always rounds down and returns the largest intege
 `DRAWING WINDOWS`
 first we have to check if the lights are on or off,if the lights are on,we draw the window
 but the lightson array is one dimensional and ourbuilding is a two dimensional grid,how do we map the lightson array to the building
+we map the floor and room index to the index of the lights with the formula-
+we multiply the floor index by the number of rooms per floor and add the room index
+
+POSITONING THESE WINDOWS CAN BE A BIT TRICKY
+Our windows align to the top left corner of the building and the origin is at the bottom left corner of the screen
+wj=hen we call the translate method we do not change anything that's already on the screen.we only affect the things that we are about to paint.so we translate the origin of the coordiante system to the top-left corner of the building plus the gap horizontally and minus the gap vertically
+
+---
+
+A Quadratic Curve is a simple curve with one control point
+
+---
+
+Initializing Bomb Position
+we have to call this function after we generate our building metadata because the bomb's position depends on the position of the gorilla and that depends on the building it stands on

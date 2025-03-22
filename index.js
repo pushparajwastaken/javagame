@@ -1,42 +1,129 @@
+// The state of the game
 let state = {};
 
-const canvas = document.getElementById("game");
+// ...
 
+// The main canvas element and its drawing context
+const canvas = document.getElementById("game");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-
 const ctx = canvas.getContext("2d");
 
-// Initialize the game on load
-window.onload = function () {
-  newGame();
-};
+// ...
+
+newGame();
 
 function newGame() {
+  // Reset game state
   state = {
-    phase: "aiming", //aiming || in flight || celebrating
+    phase: "aiming", // aiming | in flight | celebrating
     currentPlayer: 1,
-    bomb: { x: undefined, y: undefined, rotation: 0, velocity: { x: 0, y: 0 } },
+    bomb: {
+      x: undefined,
+      y: undefined,
+      rotation: 0,
+      velocity: { x: 0, y: 0 },
+    },
+
+    // Buildings
     backgroundBuildings: [],
     buildings: [],
     blastHoles: [],
+
+    // ...
   };
 
-  generateBackgroundBuildings(); // Generate buildings dynamically based on screen width
-  for (let index = 0; index < 8; index++) {
-    generateBuildings(8);
+  // Generate background buildings
+  for (let i = 0; i < 11; i++) {
+    generateBackgroundBuilding(i);
   }
-  initialBombPosition(); //the initial position of the bomb should align with the hands of the gorilla
-  //so we can only initialize this once the level is generated
+
+  // Generate buildings
+  for (let i = 0; i < 8; i++) {
+    generateBuilding(i);
+  }
+
+  // ...
+
+  initializeBombPosition();
+
+  // ...
+
   draw();
 }
 
-// Draw Everything
+function generateBackgroundBuilding(index) {
+  const previousBuilding = state.backgroundBuildings[index - 1];
+
+  const x = previousBuilding
+    ? previousBuilding.x + previousBuilding.width + 4
+    : -30;
+
+  const minWidth = 60;
+  const maxWidth = 110;
+  const width = minWidth + Math.random() * (maxWidth - minWidth);
+
+  const minHeight = 80;
+  const maxHeight = 350;
+  const height = minHeight + Math.random() * (maxHeight - minHeight);
+
+  state.backgroundBuildings.push({ x, width, height });
+}
+
+function generateBuilding(index) {
+  const previousBuilding = state.buildings[index - 1];
+
+  const x = previousBuilding
+    ? previousBuilding.x + previousBuilding.width + 4
+    : 0;
+
+  const minWidth = 80;
+  const maxWidth = 130;
+  const width = minWidth + Math.random() * (maxWidth - minWidth);
+
+  const platformWithGorilla = index === 1 || index === 6;
+
+  const minHeight = 40;
+  const maxHeight = 300;
+  const minHeightGorilla = 30;
+  const maxHeightGorilla = 150;
+
+  const height = platformWithGorilla
+    ? minHeightGorilla + Math.random() * (maxHeightGorilla - minHeightGorilla)
+    : minHeight + Math.random() * (maxHeight - minHeight);
+
+  // Generate an array of booleans to show if the light is on or off in a room
+  const lightsOn = [];
+  for (let i = 0; i < 50; i++) {
+    const light = Math.random() <= 0.33 ? true : false;
+    lightsOn.push(light);
+  }
+
+  state.buildings.push({ x, width, height, lightsOn });
+}
+
+function initializeBombPosition() {
+  const building =
+    state.currentPlayer === 1 ? state.buildings.at[0] : state.buildings.at[-2];
+  const gorillaX = building.x + building.width / 2;
+  const gorillaY = building.height;
+  const gorillaHandOffsetX = state.currentPlayer === 1 ? -28 : 28;
+  const gorillaHandOffsetY = 107;
+
+  state.bomb.x = gorillaX + gorillaHandOffsetX;
+  state.bomb.y = gorillaY + gorillaHandOffsetY;
+  state.bomb.velocity.x = 0;
+  state.bomb.velocity.y - 0;
+}
+
 function draw() {
   ctx.save();
-  ctx.translate(0, canvas.height);
+
+  // Flip coordinate system upside down
+  ctx.translate(0, window.innerHeight);
   ctx.scale(1, -1);
 
+  // Draw scene
   drawBackground();
   drawBackgroundBuildings();
   drawBuildings();
@@ -44,14 +131,9 @@ function draw() {
   drawGorilla(2);
   drawBomb();
 
+  // Restore transformation
   ctx.restore();
 }
-//Event Handlers
-
-function throwBomb() {}
-
-//this will be responsible to calculate the exact location of the bomb while it is in the air
-function animate(timestamp) {}
 
 function drawBackground() {
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -59,98 +141,191 @@ function drawBackground() {
   gradient.addColorStop(0.5, "#FF69B4");
   gradient.addColorStop(1, "#C71585");
 
-  //Draw Sky
+  // Draw sky
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-  // Draw Moon
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  // Draw moon
+  ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
   ctx.beginPath();
-  ctx.arc(300, 450, 65, 0, 2 * Math.PI);
-  //1st argument-x coordinate
-  //2nd argument-y coordinate
-  //3rd argument-radius
-  //the last two arguments are the start and end angles of the arc in radians
+  ctx.arc(300, 350, 60, 0, 2 * Math.PI);
   ctx.fill();
 }
 
 function drawBackgroundBuildings() {
   state.backgroundBuildings.forEach((building) => {
-    ctx.fillStyle = "#e1daff";
+    ctx.fillStyle = "#947285";
     ctx.fillRect(building.x, 0, building.width, building.height);
   });
 }
 
 function drawBuildings() {
   state.buildings.forEach((building) => {
-    //Draw Buildings
+    // Draw building
     ctx.fillStyle = "#4A3C68";
     ctx.fillRect(building.x, 0, building.width, building.height);
-    //Draw Windows
-    const windowwidth = 10;
-    const windowheight = 12;
+
+    // Draw windows
+    const windowWidth = 10;
+    const windowHeight = 12;
     const gap = 15;
-    const numberoffloors = Math.ceil(
-      (building.height - gap) / (windowheight + gap)
+
+    const numberOfFloors = Math.ceil(
+      (building.height - gap) / (windowHeight + gap)
     );
-    const numberofRoomsperfloor = Math.floor(
-      (building.width - gap) / (windowwidth + gap)
+    const numberOfRoomsPerFloor = Math.floor(
+      (building.width - gap) / (windowWidth + gap)
     );
+
+    for (let floor = 0; floor < numberOfFloors; floor++) {
+      for (let room = 0; room < numberOfRoomsPerFloor; room++) {
+        if (building.lightsOn[floor * numberOfRoomsPerFloor + room]) {
+          ctx.save();
+
+          ctx.translate(building.x + gap, building.height - gap);
+          ctx.scale(1, -1);
+
+          const x = room * (windowWidth + gap);
+          const y = floor * (windowHeight + gap);
+
+          ctx.fillStyle = "#EBB6A2";
+          ctx.fillRect(x, y, windowWidth, windowHeight);
+
+          ctx.restore();
+        }
+      }
+    }
   });
 }
-function generateBackgroundBuildings() {
-  state.backgroundBuildings = []; // Reset buildings
 
-  const minWidth = 60;
-  const maxWidth = 110;
-  const gap = 4; // Keep gap constant
+function drawGorilla(player) {
+  ctx.save();
 
-  let x = -30; // Start position of first building
+  const building =
+    player === 1
+      ? state.buildings.at(1) // Second building
+      : state.buildings.at(-2); // Second last building
 
-  while (x < canvas.width) {
-    const width = minWidth + Math.random() * (maxWidth - minWidth);
-    const height = 80 + Math.random() * 270; // Between 80px and 350px height
+  ctx.translate(building.x + building.width / 2, building.height);
 
-    state.backgroundBuildings.push({ x, width, height });
+  drawGorillaBody();
+  drawGorillaLeftArm(player);
+  drawGorillaRightArm(player);
+  drawGorillaFace(player);
 
-    x += width + gap;
+  ctx.restore();
+}
+
+function drawGorillaBody() {
+  ctx.fillStyle = "black";
+
+  ctx.beginPath();
+  ctx.moveTo(0, 15);
+  ctx.lineTo(-7, 0);
+  ctx.lineTo(-20, 0);
+  ctx.lineTo(-17, 18);
+  ctx.lineTo(-20, 44);
+
+  ctx.lineTo(-11, 77);
+  ctx.lineTo(0, 84);
+  ctx.lineTo(11, 77);
+
+  ctx.lineTo(20, 44);
+  ctx.lineTo(17, 18);
+  ctx.lineTo(20, 0);
+  ctx.lineTo(7, 0);
+  ctx.fill();
+}
+
+function drawGorillaLeftArm(player) {
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 18;
+
+  ctx.beginPath();
+  ctx.moveTo(-14, 50);
+
+  if (state.phase === "aiming" && state.currentPlayer === 1 && player === 1) {
+    ctx.quadraticCurveTo(-44, 63, -28, 107);
+  } else if (state.phase === "celebrating" && state.currentPlayer === player) {
+    ctx.quadraticCurveTo(-44, 63, -28, 107);
+  } else {
+    ctx.quadraticCurveTo(-44, 45, -28, 12);
   }
-}
-function generateBuildings(index) {
-  const previousBuildings = state.buildings[index - 1];
-  const x = previousBuildings
-    ? previousBuildings.x + previousBuildings.width + 4
-    : 0; // Gap between buildings
-  const minWidth = 80;
-  const maxWidth = 130;
-  const width = minWidth + Math.random() + (maxWidth - minWidth);
 
-  const platformwithGorilla = index === 1 || index === 6;
-  const minHeightGorilla = 30;
-  const maxHeightGorilla = 150;
-  const minHeight = 40;
-  const maxHeight = 300;
-  const height = platformwithGorilla
-    ? minHeightGorilla + Math.random() + (maxHeightGorilla - minHeightGorilla)
-    : minHeight + Math.random() + (maxHeight - minHeight);
-  //generate an array of booleans to show if the light is on or not
-  const lightson = [];
-  for (let i = 0; i < 50; i++) {
-    const light = Math.random() <= 0.33 ? true : false;
-    lightson.push(light);
+  ctx.stroke();
+}
+
+function drawGorillaRightArm(player) {
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 18;
+
+  ctx.beginPath();
+  ctx.moveTo(+14, 50);
+
+  if (state.phase === "aiming" && state.currentPlayer === 2 && player === 2) {
+    ctx.quadraticCurveTo(+44, 63, +28, 107);
+  } else if (state.phase === "celebrating" && state.currentPlayer === player) {
+    ctx.quadraticCurveTo(+44, 63, +28, 107);
+  } else {
+    ctx.quadraticCurveTo(+44, 45, +28, 12);
   }
-  state.buildings.push({ x, width, height, lightson });
+
+  ctx.stroke();
 }
 
-function initialBombPosition() {}
+function drawGorillaFace(player) {
+  //face
+  ctx.fillStyle = "lightgray";
+  ctx.beginPath();
+  ctx.arc(0, 63, 9, 0, 2 * Math.PI);
+  ctx.moveTo(-3.5, 70);
+  ctx.arc(-3.5, 70, 4, 0, 2 * Math.PI);
+  ctx.moveTo(+3.5, 70);
+  ctx.arc(+3.5, 70, 4, 0, 2 * Math.PI);
+  ctx.fill();
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // Eyes
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(-3.5, 70, 1.4, 0, 2 * Math.PI);
+  ctx.moveTo(+3.5, 70);
+  ctx.arc(+3.5, 70, 1.4, 0, 2 * Math.PI);
+  ctx.fill();
 
-  generateBackgroundBuildings(); // Adjust number of buildings based on new size
-  draw();
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 1.4;
+
+  // Nose
+  ctx.beginPath();
+  ctx.moveTo(-3.5, 66.5);
+  ctx.lineTo(-1.5, 65);
+  ctx.moveTo(3.5, 66.5);
+  ctx.lineTo(1.5, 65);
+  ctx.stroke();
+
+  // Mouth
+  ctx.beginPath();
+  if (state.phase === "celebrating" && state.currentPlayer === player) {
+    ctx.moveTo(-5, 60);
+    ctx.quadraticCurveTo(0, 56, 5, 60);
+  } else {
+    ctx.moveTo(-5, 56);
+    ctx.quadraticCurveTo(0, 60, 5, 56);
+  }
+  ctx.stroke();
 }
 
-// Listen for window resize events
-window.addEventListener("resize", resizeCanvas);
+function drawBomb() {}
+
+// Event handlers
+// ...
+
+function throwBomb() {
+  // ...
+}
+
+function animate(timestamp) {
+  // ...
+}
+
+// ...
