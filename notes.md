@@ -132,3 +132,66 @@ A Quadratic Curve is a simple curve with one control point
 
 Initializing Bomb Position
 we have to call this function after we generate our building metadata because the bomb's position depends on the position of the gorilla and that depends on the building it stands on
+
+---
+
+Scale
+value of this property depends on the size of the generated buildings.so after we generate the city,we'll call another function to calculate the scale
+this function will also come before we initialize the bomb position because later that will depend on the scale
+
+Calculate Scale
+-we calculate the total width of the city,take the last building's position and add its width,then take the inner width of the browser window and divide it by this number.this will give us a ratio it will tell how the width of our city relates to the width of the window
+-whenever we use inner width and innerheight we need to adjust them by our scaling factor
+-windows resize eventlistener
+this does a few things
+1.first we resize the canvas element to fit the new size
+2.then we recalculate the position of the bomb
+(
+readjusting the bomb doesn't make a difference yet but later an update version of the initializeBombPosition function will depend on the scale
+)
+3.finally we redraw the whole canvas according to our new scaling
+
+---
+
+The user-select CSS property controls whether the user can select text. This doesn't have any effect on content loaded as part of a browser's user interface (its chrome), except in textboxes.
+this is kept as none to avoid a glitch later
+normally when we drag the bomb we could accidentally end up selecting the text on the screen
+
+---
+
+`Event Handlers for Grabbing the Bomb`
+we are using the grab are element only for the mousedown event
+for mousemove and mouseup our event target is window.this is because we want to start the draggingg movement with the mouse being over the bomb but as we are dragging we can move the mouse outside of the grab area and we still want the event handlers to work
+
+`mousemove event handler`
+the event target is not the grab area of the bomb but the window object
+this event handler checks if we are currently dragging.if not then it doesn't do anything,if we are dragging then it calculates the delta of the mouse position since the mousedown event and sets it as the velcoity of the bomb
+as we are aiming we drag the mouse backwards
+BUT THE BOMB WILL MOVE FORWARD AFTER WE RELEASE IT
+so we asssign the horizontal and vertical mouse movement with a negative sign as the velocity
+but with a double twist we switch back the vertical velocity(the Y coordinate) to have a positive sign because we flipped the coordinate system.
+event handlers still assume that the coordinate system grows downwards and within the canvas,it's actually the opposite.
+then we update the info panels we added earlier in html
+we call a utility function to show the angle and the velocity
+from the event handlers we'll get only the horizontal and vertical components of the velocity we need to transform these values
+
+---
+
+`RequestAnimationFrame`
+The window.requestAnimationFrame() method tells the browser you wish to perform an animation. It requests the browser to call a user-supplied callback function before the next repaint.
+
+The frequency of calls to the callback function will generally match the display refresh rate. The most common refresh rate is 60hz, (60 cycles/frames per second), though 75hz, 120hz, and 144hz are also widely used. requestAnimationFrame() calls are paused in most browsers when running in background tabs or hidden <iframe>s, in order to improve performance and battery life
+
+---
+
+`Animate Function`
+The animate function will handle one frame of the animation loop,in each frame,we move the bomb by a little,then at the very end of the function it keeps on requesting another animation frame,this way we end up running the animate function around 60 times every second.
+the constant repainting of the screen will appear as a continuous animation
+the only way to stop this animation loop is by returning early from this function,returning before we reach the last statement that requests annother animation frame will eventually stop this loop
+
+we use the timestamp attribute to calculate how much time passed between the two cycles,before moving the bomb,we calculate the elapsed time,by subtracting the previous timestamp from the current one
+
+but how did we know the previous timestamp?
+we assign the current timestamp at the end of the function to the previousAnimationtimestamp variable which will eventually become the previous timestamp in the next cycle
+
+However the first cycle is an exception because,at that point,we don't have a previous cycle yet

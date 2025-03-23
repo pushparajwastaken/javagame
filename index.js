@@ -9,6 +9,17 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const ctx = canvas.getContext("2d");
 
+// Left info panel
+const angle1DOM = document.querySelector("#info-left .angle");
+const velocity1DOM = document.querySelector("#info-left .velocity");
+
+// Right info panel
+const angle2DOM = document.querySelector("#info-right .angle");
+const velocity2DOM = document.querySelector("#info-right .velocity");
+
+// The bomb's grab area
+const bombGrabAreaDOM = document.getElementById("bomb-grab-area");
+
 // ...
 
 newGame();
@@ -30,7 +41,7 @@ function newGame() {
     buildings: [],
     blastHoles: [],
 
-    // ...
+    scale: 1,
   };
 
   // Generate background buildings
@@ -43,8 +54,7 @@ function newGame() {
     generateBuilding(i);
   }
 
-  // ...
-
+  calculateScale();
   initializeBombPosition();
 
   // ...
@@ -102,18 +112,44 @@ function generateBuilding(index) {
   state.buildings.push({ x, width, height, lightsOn });
 }
 
+function calculateScale() {
+  const lastBuilding = state.buildings.at(-1);
+  const totalWidthOfTheCity = lastBuilding.x + lastBuilding.width;
+
+  state.scale = window.innerWidth / totalWidthOfTheCity;
+}
+
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  calculateScale();
+  initializeBombPosition();
+  draw();
+});
+
 function initializeBombPosition() {
   const building =
-    state.currentPlayer === 1 ? state.buildings.at[0] : state.buildings.at[-2];
+    state.currentPlayer === 1
+      ? state.buildings.at(1) // Second building
+      : state.buildings.at(-2); // Second last building
+
   const gorillaX = building.x + building.width / 2;
   const gorillaY = building.height;
+
   const gorillaHandOffsetX = state.currentPlayer === 1 ? -28 : 28;
   const gorillaHandOffsetY = 107;
 
   state.bomb.x = gorillaX + gorillaHandOffsetX;
   state.bomb.y = gorillaY + gorillaHandOffsetY;
   state.bomb.velocity.x = 0;
-  state.bomb.velocity.y - 0;
+  state.bomb.velocity.y = 0;
+
+  // Initialize the position of the grab area in HTML
+  const grabAreaRadius = 15;
+  const left = state.bomb.x * state.scale - grabAreaRadius;
+  const bottom = state.bomb.y * state.scale - grabAreaRadius;
+  bombGrabAreaDOM.style.left = `${left}px`;
+  bombGrabAreaDOM.style.bottom = `${bottom}px`;
 }
 
 function draw() {
@@ -122,6 +158,7 @@ function draw() {
   // Flip coordinate system upside down
   ctx.translate(0, window.innerHeight);
   ctx.scale(1, -1);
+  ctx.scale(state.scale, state.scale);
 
   // Draw scene
   drawBackground();
@@ -136,14 +173,23 @@ function draw() {
 }
 
 function drawBackground() {
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#FFC0CB");
-  gradient.addColorStop(0.5, "#FF69B4");
-  gradient.addColorStop(1, "#C71585");
+  const gradient = ctx.createLinearGradient(
+    0,
+    0,
+    0,
+    window.innerHeight / state.scale
+  );
+  gradient.addColorStop(1, "#F8BA85");
+  gradient.addColorStop(0, "#FFC28E");
 
   // Draw sky
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+  ctx.fillRect(
+    0,
+    0,
+    window.innerWidth / state.scale,
+    window.innerHeight / state.scale
+  );
 
   // Draw moon
   ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
@@ -245,7 +291,12 @@ function drawGorillaLeftArm(player) {
   ctx.moveTo(-14, 50);
 
   if (state.phase === "aiming" && state.currentPlayer === 1 && player === 1) {
-    ctx.quadraticCurveTo(-44, 63, -28, 107);
+    ctx.quadraticCurveTo(
+      -44,
+      63,
+      -28 - state.bomb.velocity.x / 6.25,
+      107 - state.bomb.velocity.y / 6.25
+    );
   } else if (state.phase === "celebrating" && state.currentPlayer === player) {
     ctx.quadraticCurveTo(-44, 63, -28, 107);
   } else {
@@ -263,7 +314,12 @@ function drawGorillaRightArm(player) {
   ctx.moveTo(+14, 50);
 
   if (state.phase === "aiming" && state.currentPlayer === 2 && player === 2) {
-    ctx.quadraticCurveTo(+44, 63, +28, 107);
+    ctx.quadraticCurveTo(
+      +44,
+      63,
+      +28 - state.bomb.velocity.x / 6.25,
+      107 - state.bomb.velocity.y / 6.25
+    );
   } else if (state.phase === "celebrating" && state.currentPlayer === player) {
     ctx.quadraticCurveTo(+44, 63, +28, 107);
   } else {
@@ -274,7 +330,7 @@ function drawGorillaRightArm(player) {
 }
 
 function drawGorillaFace(player) {
-  //face
+  // Face
   ctx.fillStyle = "lightgray";
   ctx.beginPath();
   ctx.arc(0, 63, 9, 0, 2 * Math.PI);
@@ -315,17 +371,104 @@ function drawGorillaFace(player) {
   ctx.stroke();
 }
 
-function drawBomb() {}
+function drawBomb() {
+  ctx.save();
+  ctx.translate(state.bomb.x, state.bomb.y);
+
+  if (state.phase === "aiming") {
+    ctx.translate(-state.bomb.velocity.x / 6.25, -state.bomb.velocity.y / 6.25);
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.setLineDash([3, 8]); //after every 3 pixels of line i want to have 8 pixels of gap
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(state.bomb.velocity.x, state.bomb.velocity.y);
+    ctx.stroke();
+  }
+
+  // Draw circle
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Restore transformation
+  ctx.restore();
+}
 
 // Event handlers
 // ...
 
 function throwBomb() {
-  // ...
+  state.phase = "in flight";
+  previousAnimationTimestamp = undefined;
+  requestAnimationFrame(animate);
 }
 
 function animate(timestamp) {
-  // ...
+  if (previousAnimationTimestamp === undefined) {
+    previousAnimationTimestamp = timestamp;
+    requestAnimationFrame(animate);
+    return;
+  }
+  const elapsedTime = timestamp - previousAnimationTimestamp;
+  moveBomb(elapsedTime);
+  const miss = false;
+  const hit = false;
+  if (miss) {
+    return;
+  }
+  if (hit) {
+    return;
+  }
+  draw();
+  previousAnimationTimestamp = timestamp;
+  requestAnimationFrame(animate);
 }
 
 // ...
+
+let isDragging = false;
+let dragStartX = undefined;
+let dragStartY = undefined;
+
+bombGrabAreaDOM.addEventListener("mousedown", function (e) {
+  if (state.phase === "aiming") {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+
+    document.body.style.cursor = "grabbing";
+  }
+});
+
+window.addEventListener("mousemove", function (e) {
+  if (isDragging) {
+    let deltaX = e.clientX - dragStartX;
+    let deltaY = e.clientY - dragStartY;
+    state.bomb.velocity.x = -deltaX;
+    state.bomb.velocity.y = deltaY;
+    setInfo(deltaX, deltaY);
+    draw();
+  }
+});
+
+function setInfo(deltaX, deltaY) {
+  const hypotenuse = Math.sqrt(deltaX ** 2 + deltaY ** 2);
+  const angleRadians = Math.asin(deltaX / hypotenuse);
+  const angleinDegrees = (angleRadians / Math.PI) * 180;
+  if (state.currentPlayer === 1) {
+    angle1DOM.innerText = Math.round(angleinDegrees);
+    velocity1DOM.innerText = Math.round(hypotenuse);
+  } else {
+    angle2DOM.innerText = Math.round(angleinDegrees);
+    velocity2DOM.innerText = Math.round(hypotenuse);
+  }
+}
+window.addEventListener("mouseup", function () {
+  if (isDragging) {
+    isDragging = false;
+    document.body.style.cursor = "default";
+    throwBomb();
+  }
+});
