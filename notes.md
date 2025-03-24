@@ -195,3 +195,21 @@ but how did we know the previous timestamp?
 we assign the current timestamp at the end of the function to the previousAnimationtimestamp variable which will eventually become the previous timestamp in the next cycle
 
 However the first cycle is an exception because,at that point,we don't have a previous cycle yet
+
+---
+
+`Clipping Mask`
+with a clipping mask ,we define an area of the screen that we can draw on and everything else outside of it will be ignored
+inverse clipping mask is not a thing in canvas,so we have to do it manually by drawing the inverse of the clipping mask,we need to define a mask that fills the whole screen and has some wholes in it
+if we apply this mask and we apply it only for the main building,then we end with effect we wanted to achieve
+
+---
+
+when we draw a outer shape we draw it clockwise
+and when we draw the hole in it-in this case the circle we draw it counterclockwise or the other way around
+
+`GLITCH`
+Sometimes the bomb will fly over the corner of a building without hitting it,
+when the bomb is in flight it can move by more than 10 pixels
+at a time,if we do hit detections only per animation cycle,that means that we are completely blind to the bomb's position for those 10 pixels or so
+we will render the scene once per animation cycle but we will do hit detection many a times by dividing the bomb's movement at each point

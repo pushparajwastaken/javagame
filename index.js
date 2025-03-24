@@ -2,13 +2,15 @@
 let state = {};
 
 // ...
-
+const blastholeradius = 18;
 // The main canvas element and its drawing context
 const canvas = document.getElementById("game");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const ctx = canvas.getContext("2d");
 
+const congratulationsDOM = document.getElementById("congratulations");
+const winnerDOM = document.getElementById("winner");
 // Left info panel
 const angle1DOM = document.querySelector("#info-left .angle");
 const velocity1DOM = document.querySelector("#info-left .velocity");
@@ -20,7 +22,7 @@ const velocity2DOM = document.querySelector("#info-right .velocity");
 // The bomb's grab area
 const bombGrabAreaDOM = document.getElementById("bomb-grab-area");
 
-// ...
+const newGameButtonDOM = document.getElementById("new-game");
 
 newGame();
 
@@ -57,11 +59,19 @@ function newGame() {
   calculateScale();
   initializeBombPosition();
 
-  // ...
+  congratulationsDOM.style.visibility = "hidden";
+  angle1DOM.innerText = 0;
+  velocity1DOM.innerText = 0;
+  angle2DOM.innerText = 0;
+  velocity2DOM.innerText = 0;
 
   draw();
 }
-
+function announceWinner() {
+  winnerDOM.innerText = `Player ${state.currentPlayer}`;
+  congratulationsDOM.style.visibility = "visible";
+}
+newGameButtonDOM.addEventListener("click", newGame);
 function generateBackgroundBuilding(index) {
   const previousBuilding = state.backgroundBuildings[index - 1];
 
@@ -143,6 +153,7 @@ function initializeBombPosition() {
   state.bomb.y = gorillaY + gorillaHandOffsetY;
   state.bomb.velocity.x = 0;
   state.bomb.velocity.y = 0;
+  state.bomb.rotation = 0;
 
   // Initialize the position of the grab area in HTML
   const grabAreaRadius = 15;
@@ -163,7 +174,7 @@ function draw() {
   // Draw scene
   drawBackground();
   drawBackgroundBuildings();
-  drawBuildings();
+  drawBuildingswithblastholes();
   drawGorilla(1);
   drawGorilla(2);
   drawBomb();
@@ -179,9 +190,9 @@ function drawBackground() {
     0,
     window.innerHeight / state.scale
   );
-  gradient.addColorStop(1, "#F8BA85");
-  gradient.addColorStop(0, "#FFC28E");
-
+  gradient.addColorStop(0, "#FFC0CB");
+  gradient.addColorStop(0.5, "#FF69B4");
+  gradient.addColorStop(1, "#C71585");
   // Draw sky
   ctx.fillStyle = gradient;
   ctx.fillRect(
@@ -263,7 +274,7 @@ function drawGorilla(player) {
 }
 
 function drawGorillaBody() {
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "white";
 
   ctx.beginPath();
   ctx.moveTo(0, 15);
@@ -284,7 +295,7 @@ function drawGorillaBody() {
 }
 
 function drawGorillaLeftArm(player) {
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle = "white";
   ctx.lineWidth = 18;
 
   ctx.beginPath();
@@ -307,7 +318,7 @@ function drawGorillaLeftArm(player) {
 }
 
 function drawGorillaRightArm(player) {
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle = "white";
   ctx.lineWidth = 18;
 
   ctx.beginPath();
@@ -377,21 +388,34 @@ function drawBomb() {
 
   if (state.phase === "aiming") {
     ctx.translate(-state.bomb.velocity.x / 6.25, -state.bomb.velocity.y / 6.25);
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.setLineDash([3, 8]); //after every 3 pixels of line i want to have 8 pixels of gap
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(state.bomb.velocity.x, state.bomb.velocity.y);
     ctx.stroke();
+    //draw circle
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+    ctx.fill();
+  } else if (state.phase === "in flight") {
+    //draw rotated banana
+    ctx.fillStyle = "black";
+    ctx.rotate(state.bomb.rotation);
+    ctx.beginPath();
+    ctx.moveTo(-8, -2);
+    ctx.quadraticCurveTo(0, 12, 8, -2);
+    ctx.quadraticCurveTo(0, 2, -8, -2);
+    ctx.fill();
+  } else {
+    //draw circle
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+    ctx.fill();
   }
-
-  // Draw circle
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(0, 0, 6, 0, 2 * Math.PI);
-  ctx.fill();
-
   // Restore transformation
   ctx.restore();
 }
@@ -412,21 +436,81 @@ function animate(timestamp) {
     return;
   }
   const elapsedTime = timestamp - previousAnimationTimestamp;
-  moveBomb(elapsedTime);
-  const miss = false;
-  const hit = false;
+  const hitdetectionprecision = 10;
+  for (let i = 0; i < hitdetectionprecision; i++) {
+    moveBomb(elapsedTime / hitdetectionprecision);
+  }
+  const miss = checkframehit() || checkbuildinghit() || false;
+  const hit = checkGorillaHit();
   if (miss) {
+    state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; //switch players
+    state.phase = "aiming";
+    initializeBombPosition();
+    draw();
     return;
   }
   if (hit) {
+    state.phase = "celebrating";
+    announceWinner();
+    draw();
     return;
   }
   draw();
+
+  //continue the animation loop
   previousAnimationTimestamp = timestamp;
   requestAnimationFrame(animate);
 }
-
-// ...
+function checkbuildinghit() {
+  for (let i = 0; i < state.buildings.length; i++) {
+    const building = state.buildings[i];
+    if (
+      state.bomb.x + 4 > building.x &&
+      state.bomb.x - 4 < building.x + building.width &&
+      state.bomb.y - 4 < 0 + building.height
+    ) {
+      //check iff the bomb is inside the blast hole of a previous impact
+      for (let j = 0; j < state.blastHoles.length; j++) {
+        const blasthole = state.blastHoles[j];
+        //check how far the bomb is from the center of a previous blast hole
+        const horizontalDistance = state.bomb.x - blasthole.x;
+        const verticalDistance = state.bomb.y - blasthole.y;
+        const distance = Math.sqrt(
+          horizontalDistance ** 2 + verticalDistance ** 2
+        );
+        if (distance < blastholeradius) {
+          //the bomb is inside of the rectangle of a building
+          //but a previous bomb already blew offf this part of the building
+          return false;
+        }
+      }
+      state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
+      return true;
+    }
+  }
+}
+function checkframehit() {
+  //stop throw animation once the bomb gets out of the left
+  //button,or right edge of the screen
+  if (
+    state.bomb.x < 0 ||
+    state.bomb.x > window.innerWidth / state.scale ||
+    state.bomb.y < 0
+  ) {
+    return true; //the bomb is off screen
+  }
+}
+function moveBomb(elapsedTime) {
+  const multiplier = elapsedTime / 200;
+  //adjust trajectory by gravity
+  state.bomb.velocity.y -= 20 * multiplier;
+  //calculate new position
+  state.bomb.x += state.bomb.velocity.x * multiplier;
+  state.bomb.y += state.bomb.velocity.y * multiplier;
+  //rotate according to the direction
+  const direction = state.currentPlayer === 1 ? -1 : +1;
+  state.bomb.rotation += direction * 5 * multiplier;
+}
 
 let isDragging = false;
 let dragStartX = undefined;
@@ -472,3 +556,42 @@ window.addEventListener("mouseup", function () {
     throwBomb();
   }
 });
+
+function drawBuildingswithblastholes() {
+  ctx.save();
+  state.blastHoles.forEach((blasthole) => {
+    ctx.beginPath();
+
+    //outer shape clockwise
+
+    ctx.rect(
+      0,
+      0,
+      window.innerWidth / state.scale,
+      window.innerHeight / state.scale
+    );
+    ctx.arc(blasthole.x, blasthole.y, blastholeradius, 0, 2 * Math.PI, true);
+    ctx.clip();
+  });
+  drawBuildings();
+  ctx.restore();
+}
+
+function checkGorillaHit() {
+  const enemyPlayer = state.currentPlayer === 1 ? 2 : 1;
+  const enemyBuilding =
+    enemyPlayer === 1 ? state.buildings.at[1] : state.buildings.at[-2];
+  ctx.save();
+  ctx.translate(
+    enemyBuilding.x + enemyBuilding.width / 2,
+    enemyBuilding.height
+  );
+  drawGorillaBody();
+  let hit = ctx.isPointInPath(state.bomb.x, state.bomb.y);
+  drawGorillaLeftArm(enemyPlayer);
+  hit ||= ctx.isPointInStroke(state.bomb.x, state.bomb.y);
+  drawGorillaRightArm(enemyPlayer);
+  hit ||= ctx.isPointInStroke(state.bomb.x, state.bomb.y);
+  ctx.restore();
+  return hit;
+}
