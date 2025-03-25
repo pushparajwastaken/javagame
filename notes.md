@@ -213,3 +213,14 @@ Sometimes the bomb will fly over the corner of a building without hitting it,
 when the bomb is in flight it can move by more than 10 pixels
 at a time,if we do hit detections only per animation cycle,that means that we are completely blind to the bomb's position for those 10 pixels or so
 we will render the scene once per animation cycle but we will do hit detection many a times by dividing the bomb's movement at each point
+
+---
+
+`AI Logic`
+at each turn when the computer is throwing it will run a number of different simulations,it tries different angles and different velocity it picks values for these within a range.for each simulation we check where does the throw end,then we calculate the distance of the impact from the nemy gorilla and at the end of each simulation we check if we got closer to the enemy,then the previous animations,we pick the best one and that's going to be the real throw of the computer
+
+---
+
+`Set TimeOut`
+The setTimeout() method calls a function after a number of milliseconds
+myTimeout = setTimeout(function, milliseconds);

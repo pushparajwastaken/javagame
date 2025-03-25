@@ -1,11 +1,11 @@
 let state = {};
-
+let simulationMode = false;
 let isDragging = false;
 let dragStartX = undefined;
 let dragStartY = undefined;
-
+let numberofplayers = 1;
 let previousAnimationTimestamp = undefined;
-
+let simulationimpact = {};
 const blastHoleRadius = 18;
 
 const canvas = document.getElementById("game");
@@ -33,6 +33,7 @@ function newGame() {
   state = {
     phase: "aiming", // aiming | in flight | celebrating
     currentPlayer: 1,
+    round: 1,
     bomb: {
       x: undefined,
       y: undefined,
@@ -67,6 +68,9 @@ function newGame() {
   velocity2DOM.innerText = 0;
 
   draw();
+  if (numberofplayers === 0) {
+    computerthrow();
+  }
 }
 
 function generateBackgroundBuilding(index) {
@@ -288,6 +292,7 @@ function drawGorilla(player) {
   drawGorillaLeftArm(player);
   drawGorillaRightArm(player);
   drawGorillaFace(player);
+  drawGorillaThoughtBubbles(player);
 
   ctx.restore();
 }
@@ -401,6 +406,26 @@ function drawGorillaFace(player) {
   ctx.stroke();
 }
 
+function drawGorillaThoughtBubbles(player) {
+  if (state.phase === "aiming") {
+    const currentPlayerComputer =
+      (numberofplayers === 0 && state.currentPlayer === 1 && player === 1) ||
+      (numberofplayers !== 2 && state.currentPlayer === 2 && player === 2);
+    if (currentPlayerComputer) {
+      ctx.save();
+      ctx.scale(1, -1);
+      ctx.font = "20px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("?", 0, -90);
+      ctx.font = "10px sans-serif";
+      ctx.rotate((5 / 100) * Math.PI);
+      ctx.fillText("?", 0, -90);
+      ctx.rotate((-10 / 100) * Math.PI);
+      ctx.fillText("?", 0, -90);
+      ctx.restore();
+    }
+  }
+}
 function drawBomb() {
   ctx.save();
   ctx.translate(state.bomb.x, state.bomb.y);
@@ -492,9 +517,14 @@ window.addEventListener("mouseup", function () {
 });
 
 function throwBomb() {
-  state.phase = "in flight";
-  previousAnimationTimestamp = undefined;
-  requestAnimationFrame(animate);
+  if (simulationMode) {
+    previousAnimationTimestamp = 0;
+    animate(16);
+  } else {
+    state.phase = "in flight";
+    previousAnimationTimestamp = undefined;
+    requestAnimationFrame(animate);
+  }
 }
 
 function animate(timestamp) {
@@ -514,18 +544,23 @@ function animate(timestamp) {
     // Hit detection
     const miss = checkFrameHit() || checkBuildingHit(); // Bomb got off-screen or hit a building
     const hit = checkGorillaHit(); // Bomb hit the enemy
-
-    // Handle the case when we hit a building or the bomb got off-screen
+    if (simulationMode && (hit || miss)) {
+      simulationimpact = { x: state.bomb.x, y: state.bomb.y };
+      return;
+    }
     if (miss) {
       state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; // Switch players
+      if (state.currentPlayer === 1) state.round++;
       state.phase = "aiming";
       initializeBombPosition();
-
       draw();
+      const computerthrownext =
+        numberofplayers === 0 ||
+        (numberofplayers === 1 && state.currentPlayer === 2);
+      if (computerthrownext) setTimeout(computerThrow, 50);
       return;
     }
 
-    // Handle the case when we hit the enemy
     if (hit) {
       state.phase = "celebrating";
       announceWinner();
@@ -534,12 +569,15 @@ function animate(timestamp) {
       return;
     }
   }
-
-  draw();
+  if (!simulationMode) draw();
 
   // Continue the animation loop
   previousAnimationTimestamp = timestamp;
-  requestAnimationFrame(animate);
+  if (simulationMode) {
+    animate(timestamp + 16);
+  } else {
+    requestAnimationFrame(animate);
+  }
 }
 
 function moveBomb(elapsedTime) {
@@ -555,6 +593,71 @@ function moveBomb(elapsedTime) {
   // Rotate according to the direction
   const direction = state.currentPlayer === 1 ? -1 : +1;
   state.bomb.rotation += direction * 5 * multiplier;
+}
+
+function computerThrow() {
+  const numberOfSimulations = 2 + state.round * 3;
+  const bestThrow = runSimulations(numberOfSimulations);
+
+  initializeBombPosition();
+  state.bomb.velocity.x = bestThrow.velocityX;
+  state.bomb.velocity.y = bestThrow.velocityY;
+  setInfo(bestThrow.velocityX, bestThrow.velocityY);
+
+  // Draw the aiming gorilla
+  draw();
+
+  // Make it look like the computer is thinking for a second
+  setTimeout(throwBomb, 1000);
+}
+
+function runSimulations(numberOfSimulations) {
+  let bestThrow = {
+    velocityX: undefined,
+    velocityY: undefined,
+    distance: Infinity,
+  };
+  simulationMode = true;
+
+  // Calculating the center position of the enemy
+  const enemyBuilding =
+    state.currentPlayer === 1
+      ? state.buildings.at(-2) // Second last building
+      : state.buildings.at(1); // Second building
+  const enemyX = enemyBuilding.x + enemyBuilding.width / 2;
+  const enemyY = enemyBuilding.height + 30;
+
+  for (let i = 0; i < numberOfSimulations; i++) {
+    // Pick a random angle and velocity
+    const angleInDegrees = 0 + Math.random() * 90;
+    const angleInRadians = (angleInDegrees / 180) * Math.PI;
+    const velocity = 40 + Math.random() * 100;
+
+    // Calculate the horizontal and vertical velocity
+    const direction = state.currentPlayer === 1 ? 1 : -1;
+    const velocityX = Math.cos(angleInRadians) * velocity * direction;
+    const velocityY = Math.sin(angleInRadians) * velocity;
+
+    initializeBombPosition();
+    state.bomb.velocity.x = velocityX;
+    state.bomb.velocity.y = velocityY;
+
+    throwBomb();
+
+    // Calculating the distance between the simulated impact and the enemy
+    const distance = Math.sqrt(
+      (enemyX - simulationimpact.x) ** 2 + (enemyY - simulationimpact.y) ** 2
+    );
+
+    // If the current impact is closer to the enemy
+    // than any of the previous simulations then pick this one
+    if (distance < bestThrow.distance) {
+      bestThrow = { velocityX, velocityY, distance };
+    }
+  }
+
+  simulationMode = false;
+  return bestThrow;
 }
 
 function checkFrameHit() {
@@ -592,8 +695,10 @@ function checkBuildingHit() {
           return false;
         }
       }
+      if (!simulationMode) {
+        state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
+      }
 
-      state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
       return true; // Building hit
     }
   }
