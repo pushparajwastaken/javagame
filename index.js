@@ -12,7 +12,10 @@ const canvas = document.getElementById("game");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 const ctx = canvas.getContext("2d");
-
+const bg = new Audio("sounds/bg.mp4");
+bg.loop = true;
+const explosion = new Audio("sounds/explosion.mp4");
+const winning = new Audio("sounds/winning.mp4");
 const angle1DOM = document.querySelector("#info-left .angle");
 const velocity1DOM = document.querySelector("#info-left .velocity");
 const angle2DOM = document.querySelector("#info-right .angle");
@@ -23,13 +26,11 @@ const bombGrabAreaDOM = document.getElementById("bomb-grab-area");
 const congratulationsDOM = document.getElementById("congratulations");
 const winnerDOM = document.getElementById("winner");
 const newGameButtonDOM = document.getElementById("new-game");
-
-// ...
+let isBackgroundMusicStarted = false;
 
 newGame();
 
 function newGame() {
-  // Reset game state
   state = {
     phase: "aiming", // aiming | in flight | celebrating
     currentPlayer: 1,
@@ -40,8 +41,6 @@ function newGame() {
       rotation: 0,
       velocity: { x: 0, y: 0 },
     },
-
-    // Buildings
     backgroundBuildings: [],
     buildings: [],
     blastHoles: [],
@@ -66,13 +65,45 @@ function newGame() {
   velocity1DOM.innerText = 0;
   angle2DOM.innerText = 0;
   velocity2DOM.innerText = 0;
+  winning.pause();
 
   draw();
   if (numberofplayers === 0) {
-    computerthrow();
+    computerThrow();
+  }
+  if (!isBackgroundMusicStarted) {
+    startBackgroundMusic();
   }
 }
+function startBackgroundMusic() {
+  const bg = new Audio("sounds/bg.mp4");
+  bg.loop = true;
+  bg.volume = 0.3; // Adjust volume to make it less overwhelming
 
+  // Add event listeners for debugging
+  bg.addEventListener("error", (e) => {
+    console.error("Audio error:", e);
+  });
+
+  // Try to play with user interaction
+  document.addEventListener("click", function playMusic() {
+    if (!isBackgroundMusicStarted) {
+      bg.play()
+        .then(() => {
+          console.log("Background music started");
+          isBackgroundMusicStarted = true;
+          // Remove the event listener after first successful play
+          document.removeEventListener("click", playMusic);
+        })
+        .catch((error) => {
+          console.error("Error playing background music:", error);
+        });
+    }
+  });
+}
+
+// Call this when the script first loads
+startBackgroundMusic();
 function generateBackgroundBuilding(index) {
   const previousBuilding = state.backgroundBuildings[index - 1];
 
@@ -298,7 +329,7 @@ function drawGorilla(player) {
 }
 
 function drawGorillaBody() {
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "pink";
 
   ctx.beginPath();
   ctx.moveTo(0, 15);
@@ -319,7 +350,7 @@ function drawGorillaBody() {
 }
 
 function drawGorillaLeftArm(player) {
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle = "pink";
   ctx.lineWidth = 18;
 
   ctx.beginPath();
@@ -342,7 +373,7 @@ function drawGorillaLeftArm(player) {
 }
 
 function drawGorillaRightArm(player) {
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle = "pink";
   ctx.lineWidth = 18;
 
   ctx.beginPath();
@@ -366,7 +397,7 @@ function drawGorillaRightArm(player) {
 
 function drawGorillaFace(player) {
   // Face
-  ctx.fillStyle = "lightgray";
+  ctx.fillStyle = "white";
   ctx.beginPath();
   ctx.arc(0, 63, 9, 0, 2 * Math.PI);
   ctx.moveTo(-3.5, 70);
@@ -558,11 +589,16 @@ function animate(timestamp) {
         numberofplayers === 0 ||
         (numberofplayers === 1 && state.currentPlayer === 2);
       if (computerthrownext) setTimeout(computerThrow, 50);
+      explosion.play();
       return;
     }
 
     if (hit) {
       state.phase = "celebrating";
+
+      explosion.pause();
+      winning.volume = 0.3;
+      winning.play();
       announceWinner();
 
       draw();
@@ -670,7 +706,20 @@ function checkFrameHit() {
     return true; // The bomb is off-screen
   }
 }
-
+explosion.volume = 0.3;
+function playExplosionSound() {
+  if (explosion) {
+    try {
+      // Reset the audio to start from the beginning
+      explosion.currentTime = 0;
+      explosion.play().catch((error) => {
+        console.error("Error playing explosion sound:", error);
+      });
+    } catch (error) {
+      console.error("Unexpected error playing explosion sound:", error);
+    }
+  }
+}
 function checkBuildingHit() {
   for (let i = 0; i < state.buildings.length; i++) {
     const building = state.buildings[i];
@@ -697,6 +746,7 @@ function checkBuildingHit() {
       }
       if (!simulationMode) {
         state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
+        playExplosionSound();
       }
 
       return true; // Building hit
