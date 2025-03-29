@@ -3,7 +3,7 @@
 A modern HTML5 canvas remake of the classic Gorillas game where players take turns throwing exploding bananas at each other across a city skyline.
 
 ![Gorillas Game Screenshot](![image](https://github.com/user-attachments/assets/13fa2e02-7a6d-4dd3-974d-0947d8f2ae3b)
-)
+
 
 ## 🎮 Play Now
 
