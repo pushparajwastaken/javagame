@@ -2,7 +2,7 @@
 
 A modern HTML5 canvas remake of the classic Gorillas game where players take turns throwing exploding bananas at each other across a city skyline.
 
-[Gorillas Game Screenshot](![image](https://github.com/user-attachments/assets/13fa2e02-7a6d-4dd3-974d-0947d8f2ae3b)
+[Gorillas Game Screenshot]![image](https://github.com/user-attachments/assets/13fa2e02-7a6d-4dd3-974d-0947d8f2ae3b)
 
 
 ## 🎮 Play Now
@@ -64,7 +64,7 @@ When playing in single player mode, the AI opponent will calculate its throws ba
 
 1. Clone this repository:
    ```
-   git clone https://github.com/username/gorillas-game.git
+   git clone https://github.com/pushparajwastaken/javagame.git
    ```
 
 2. Open `index.html` in your web browser
@@ -73,11 +73,10 @@ When playing in single player mode, the AI opponent will calculate its throws ba
 ## 🧠 Future Improvements
 (will be out soon)
 
-- Additional power-ups and special weapons
-- Mobile touch controls optimization
-- Online multiplayer mode
+- Dark Mode
+- Mobile/IPad touch controls optimization
+- Multiplayer mode
 - Different city themes and weather conditions
-- High score tracking
 
 ## 🎨 Credits
 
